@@ -1,7 +1,6 @@
 <?php namespace Haruncpi\QueryLog;
 
 use Haruncpi\QueryLog\Supports\JsonLogFileWriter;
-use Haruncpi\QueryLog\Supports\TextLogFileWriter;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -10,7 +9,6 @@ use Illuminate\Support\Facades\DB;
  */
 class QueryLog
 {
-    const FORMAT_TEXT = 'text';
     const FORMAT_JSON = 'json';
 
     /**
@@ -104,10 +102,6 @@ class QueryLog
 
             if ($this->format == self::FORMAT_JSON && isset($this->final['queries'])) {
                 (new JsonLogFileWriter)->write($this->file_path, $this->final);
-            }
-
-            if ($this->format == self::FORMAT_TEXT && isset($this->final['queries'])) {
-                (new TextLogFileWriter)->write($this->file_path, $this->final);
             }
         });
     }
