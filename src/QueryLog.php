@@ -145,7 +145,7 @@ class QueryLog
         $file = $trace['file'];
         $line = $trace['line'];
 
-
+        $this->final['timestamp'] = gmdate('c');
         $this->final['queries'][] = [
             'sl'          => $this->total_query,
             'query'       => $query->sql,
