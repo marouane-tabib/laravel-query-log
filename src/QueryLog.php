@@ -2,6 +2,7 @@
 
 use Haruncpi\QueryLog\Supports\JsonLogFileWriter;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 
 /**
  * QueryLog Class
@@ -48,22 +49,33 @@ class QueryLog
      */
     public function __construct()
     {
-        $this->file_path = storage_path($this->file_name);
-        $this->format = trim(env('QUERY_LOG_FORMAT', self::FORMAT_TEXT));
+        $this->file_path = $this->filePath();
+        $this->format = trim(env('QUERY_LOG_FORMAT', self::FORMAT_JSON));
         $this->total_query = 0;
         $this->total_time = 0;
         $this->final = [];
 
-        if (!in_array(strtolower($this->format), [self::FORMAT_TEXT, self::FORMAT_JSON])) {
+        if (!in_array(strtolower($this->format), [self::FORMAT_JSON])) {
             throw new \Exception('Invalid query log data file format. Support text or json file format.');
         }
-
-        if (file_exists($this->file_path)) {
-            unlink($this->file_path);
-        }
-
-
+        
         $this->listenQueries();
+    }
+
+    public function filePath()
+    {
+        // Define the base directory within the storage path
+        $baseDir = storage_path('logs/data_base_queries/' . date('Y-m'));
+    
+        // Ensure the directory exists using Laravel's File facade
+        if (!File::exists($baseDir)) {
+            File::makeDirectory($baseDir, 0777, true);
+        }
+    
+        // Create the full file path with the current date as the filename (YYYY-MM-DD)
+        $filePath = $baseDir . '/' . date('Y-m-d') . '.log';
+    
+        return $filePath;
     }
 
 
