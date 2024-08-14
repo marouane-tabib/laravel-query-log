@@ -64,20 +64,13 @@ class QueryLog
 
     public function filePath()
     {
-        // Define the base directory within the storage path
-        $baseDir = storage_path('logs/data_base_queries/' . date('Y-m'));
-    
-        // Ensure the directory exists using Laravel's File facade
+        $baseDir = storage_path('logs/' .config('query-log.log_level', 'info'). '/' .date('Y-m'). '//data_base_queries/');
         if (!File::exists($baseDir)) {
             File::makeDirectory($baseDir, 0777, true);
         }
-    
-        // Create the full file path with the current date as the filename (YYYY-MM-DD)
-        $filePath = $baseDir . '/' . date('Y-m-d') . '.log';
-    
-        return $filePath;
+        
+        return $baseDir . '/' . date('Y-m-d') . '.log';
     }
-
 
     /**
      * Query listener
@@ -87,7 +80,6 @@ class QueryLog
      */
     private function listenQueries()
     {
-
         DB::listen(function ($query) {
             $this->total_query++;
             $this->total_time += $query->time;
@@ -105,14 +97,19 @@ class QueryLog
 
         app()->terminating(function () {
 
-            $this->final['meta'] = [
-                'url'         => request()->url(),
-                'method'      => request()->method(),
-                'total_query' => $this->total_query,
-                'total_time'  => $this->total_time
+            $this->final['meta_data'][] = config('query-log.meta_data');
+            $this->final['meta_data'][] = [
+                // Request
+                'url' => request()->fullUrl(),
+                'method' => request()->method(),
+                // Client
+                'client_ip' => request()->ip(),
+                'user_agent' => request()->header('User-Agent'),
+                'authenticated_user' => optional(request()->user())->only(['id', 'email'])
             ];
+            
 
-            if ($this->format == self::FORMAT_JSON && isset($this->final['queries'])) {
+            if ($this->format == self::FORMAT_JSON && !empty($this->final['queries'])) {
                 (new JsonLogFileWriter)->write($this->file_path, $this->final);
             }
         });
@@ -134,7 +131,6 @@ class QueryLog
             })->toArray());
     }
 
-
     /**
      * add each query in a specific array format
      *
@@ -146,20 +142,23 @@ class QueryLog
      */
     private function addQuery($query, $trace)
     {
-        $queryStr = $this->getSqlWithBindings($query);
-        $time = $query->time;
-        $file = $trace['file'];
         $line = $trace['line'];
 
         $this->final['timestamp'] = gmdate('c');
+        $this->final['total_query'] = $this->total_query;
+        $this->final['total_time']  = $this->total_time;
+
         $this->final['queries'][] = [
-            'sl'          => $this->total_query,
-            'query'       => $query->sql,
-            'bindings'    => $query->bindings,
-            'final_query' => $queryStr,
-            'time'        => $time,
-            'file'        => $file . ":$line",
-            'line'        => $line
+            'sl' => $this->total_query,
+            'query' => $query->sql,
+            'bindings' => $query->bindings,
+            'final_query' => $this->getSqlWithBindings($query),
+            'time' => $query->time,
+            'time_precise' => round($query->time, 3),
+            'file' => $trace['file'] . ":$line",
+            'line' => $line,
+            'connection' => $query->connectionName,
+            'environment' => app()->environment(),
         ];
     }
 }
