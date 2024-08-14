@@ -10,6 +10,11 @@ class QueryLogServiceProvider extends ServiceProvider
      */
     public function boot()
     {
+        if ($this->app->runningInConsole()) {
+            $this->publishes([
+                __DIR__.'/../config/query-log.php' => config_path('query-log.php'),
+            ], 'config');
+        }
         if (env('QUERY_LOG', false)) {
             new QueryLog;
         }
